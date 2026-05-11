@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ham Radio AI Assistant</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+  :root {
+    --bg: #050a0e;
+    --panel: #0a1520;
+    --border: #1a3a4a;
+    --green: #00ff88;
+    --amber: #ffaa00;
+    --red: #ff3344;
+    --cyan: #00ccff;
+    --dim: #1e4060;
+    --text: #c8e8f0;
+    --glow-green: 0 0 10px #00ff88, 0 0 30px #00ff8844;
+    --glow-amber: 0 0 10px #ffaa00, 0 0 30px #ffaa0044;
+    --glow-cyan: 0 0 10px #00ccff, 0 0 30px #00ccff44;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    background-image:
+      radial-gradient(ellipse at 20% 10%, #001a2e44 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 90%, #001a1044 0%, transparent 60%);
+  }
+
+  header {
+    width: 100%;
+    max-width: 860px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 0 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+
+  .callsign {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: var(--green);
+    text-shadow: var(--glow-green);
+    letter-spacing: 4px;
+  }
+
+  .subtitle {
+    font-size: 0.7rem;
+    color: var(--cyan);
+    letter-spacing: 3px;
+    opacity: 0.8;
+    margin-top: 2px;
+  }
+
+  .status-row {
+    margin-left: auto;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font-size: 0.7rem;
+    color: var(--amber);
+    letter-spacing: 1px;
+  }
+
+  .led {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--dim);
+    display: inline-block;
+    transition: all 0.3s;
+  }
+  .led.on-green { background: var(--green); box-shadow: var(--glow-green); }
+  .led.on-amber { background: var(--amber); box-shadow: var(--glow-amber); }
+  .led.on-red { background: var(--red); box-shadow: 0 0 10px #ff3344; }
+
+  .main {
+    width: 100%;
+    max-width: 860px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    position: relative;
+  }
+
+  .panel-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 3px;
+    color: var(--cyan);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+
+  /* API Key panel */
+  .api-panel { grid-column: 1 / -1; }
+
+  .api-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  input[type="password"], input[type="text"], select {
+    background: #040d14;
+    border: 1px solid var(--border);
+    color: var(--green);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    padding: 8px 12px;
+    border-radius: 2px;
+    outline: none;
+    flex: 1;
+    letter-spacing: 1px;
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus { border-color: var(--cyan); }
+  select option { background: #040d14; }
+
+  .btn {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    padding: 8px 16px;
+    border: 1px solid;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: transparent;
+    text-transform: uppercase;
+  }
+
+  .btn-green {
+    color: var(--green);
+    border-color: var(--green);
+  }
+  .btn-green:hover { background: #00ff8822; box-shadow: var(--glow-green); }
+
+  .btn-amber {
+    color: var(--amber);
+    border-color: var(--amber);
+  }
+  .btn-amber:hover { background: #ffaa0022; box-shadow: var(--glow-amber); }
+
+  .btn-red {
+    color: var(--red);
+    border-color: var(--red);
+  }
+  .btn-red:hover { background: #ff334422; }
+
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* PTT button */
+  .ptt-panel { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+  #ptt-btn {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    background: radial-gradient(circle at 40% 35%, #1a2a20, #050a0e);
+    border: 3px solid var(--green);
+    color: var(--green);
+    cursor: pointer;
+    transition: all 0.15s;
+    box-shadow: var(--glow-green), inset 0 2px 8px #000;
+    text-transform: uppercase;
+    user-select: none;
+  }
+
+  #ptt-btn:hover { transform: scale(1.04); }
+
+  #ptt-btn.listening {
+    background: radial-gradient(circle at 40% 35%, #2a0a0a, #1a0505);
+    border-color: var(--red);
+    color: var(--red);
+    box-shadow: 0 0 20px #ff3344, 0 0 60px #ff334466, inset 0 2px 8px #000;
+    animation: pulse-red 0.8s ease-in-out infinite;
+  }
+
+  #ptt-btn.processing {
+    border-color: var(--amber);
+    color: var(--amber);
+    box-shadow: var(--glow-amber);
+    animation: pulse-amber 1s ease-in-out infinite;
+    cursor: not-allowed;
+  }
+
+  @keyframes pulse-red {
+    0%, 100% { box-shadow: 0 0 20px #ff3344, 0 0 60px #ff334466, inset 0 2px 8px #000; }
+    50% { box-shadow: 0 0 30px #ff3344, 0 0 80px #ff334488, inset 0 2px 8px #000; }
+  }
+
+  @keyframes pulse-amber {
+    0%, 100% { box-shadow: var(--glow-amber); }
+    50% { box-shadow: 0 0 20px #ffaa00, 0 0 60px #ffaa0066; }
+  }
+
+  .ptt-hint {
+    font-size: 0.65rem;
+    color: var(--dim);
+    letter-spacing: 2px;
+  }
+
+  /* Waveform */
+  #waveform {
+    width: 100%;
+    height: 48px;
+    background: #040d14;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    display: block;
+  }
+
+  /* Transcript log */
+  .log-panel { grid-column: 1 / -1; height: 280px; display: flex; flex-direction: column; }
+
+  #log {
+    flex: 1;
+    overflow-y: auto;
+    font-size: 0.78rem;
+    line-height: 1.7;
+    padding: 4px 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--dim) transparent;
+  }
+
+  .log-entry {
+    padding: 6px 8px;
+    border-left: 2px solid transparent;
+    margin-bottom: 4px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  .log-entry.user {
+    border-left-color: var(--red);
+    color: #ffaaaa;
+  }
+  .log-entry.user::before { content: '▶ TX  '; color: var(--red); }
+
+  .log-entry.ai {
+    border-left-color: var(--green);
+    color: var(--text);
+  }
+  .log-entry.ai::before { content: '◀ RX  '; color: var(--green); }
+
+  .log-entry.system {
+    border-left-color: var(--cyan);
+    color: var(--cyan);
+    opacity: 0.7;
+    font-size: 0.7rem;
+  }
+  .log-entry.system::before { content: '⬡ SYS  '; }
+
+  .log-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* S-meter */
+  .s-meter {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 32px;
+    padding: 4px 0;
+  }
+
+  .s-bar {
+    width: 10px;
+    background: var(--dim);
+    border-radius: 1px;
+    transition: background 0.1s, height 0.1s;
+  }
+
+  .scanline {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    z-index: 100;
+  }
+
+  .timestamp { color: var(--dim); font-size: 0.65rem; margin-right: 6px; }
+
+  .sys-prompt-panel { grid-column: 1 / -1; }
+  textarea {
+    width: 100%;
+    background: #040d14;
+    border: 1px solid var(--border);
+    color: var(--green);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    padding: 10px 12px;
+    border-radius: 2px;
+    outline: none;
+    resize: vertical;
+    min-height: 70px;
+    line-height: 1.6;
+    letter-spacing: 0.5px;
+  }
+  textarea:focus { border-color: var(--cyan); }
+
+  .footer {
+    width: 100%;
+    max-width: 860px;
+    margin-top: 20px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-size: 0.6rem;
+    color: var(--dim);
+    letter-spacing: 2px;
+    display: flex;
+    justify-content: space-between;
+  }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+
+<header>
+  <div>
+    <div class="callsign">ARC-REACTOR</div>
+    <div class="subtitle">HAM RADIO AI ASSISTANT &nbsp;·&nbsp; v1.0</div>
+  </div>
+  <div class="status-row">
+    <span class="led" id="led-mic"></span> MIC &nbsp;&nbsp;
+    <span class="led" id="led-api"></span> API &nbsp;&nbsp;
+    <span class="led" id="led-speech"></span> STT
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- API Key -->
+  <div class="panel api-panel">
+    <div class="panel-label">▸ Anthropic API Key</div>
+    <div class="api-row">
+      <input type="password" id="api-key" placeholder="sk-ant-...  (stored in memory only, never sent anywhere except api.anthropic.com)" />
+      <button class="btn btn-green" onclick="saveKey()">CONNECT</button>
+    </div>
+  </div>
+
+  <!-- System Prompt -->
+  <div class="panel sys-prompt-panel">
+    <div class="panel-label">▸ Station Context / System Prompt</div>
+    <textarea id="sys-prompt">You are an AI assistant for a ham radio operator. Keep responses concise and radio-friendly. Use phonetic alphabet when spelling callsigns. Be helpful with propagation, band conditions, regulations, antenna theory, and operating procedures.</textarea>
+  </div>
+
+  <!-- Settings -->
+  <div class="panel">
+    <div class="panel-label">▸ Settings</div>
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <div>
+        <div style="font-size:0.65rem; color:var(--dim); margin-bottom:4px; letter-spacing:1px;">SPEECH LANGUAGE</div>
+        <select id="lang-select">
+          <option value="en-US">English (US)</option>
+          <option value="en-GB">English (GB)</option>
+          <option value="es-ES">Spanish</option>
+          <option value="de-DE">German</option>
+          <option value="fr-FR">French</option>
+          <option value="ja-JP">Japanese</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:0.65rem; color:var(--dim); margin-bottom:4px; letter-spacing:1px;">TTS VOICE</div>
+        <select id="voice-select"><option>Loading voices...</option></select>
+      </div>
+      <label style="font-size:0.72rem; display:flex; align-items:center; gap:8px; cursor:pointer;">
+        <input type="checkbox" id="tts-enabled" checked style="accent-color:var(--green);"> Enable text-to-speech readback
+      </label>
+    </div>
+  </div>
+
+  <!-- S-meter -->
+  <div class="panel">
+    <div class="panel-label">▸ Audio Level</div>
+    <canvas id="waveform"></canvas>
+    <div class="s-meter" id="s-meter">
+      <div class="s-bar" style="height:8px"></div>
+      <div class="s-bar" style="height:12px"></div>
+      <div class="s-bar" style="height:16px"></div>
+      <div class="s-bar" style="height:12px"></div>
+      <div class="s-bar" style="height:8px"></div>
+      <div class="s-bar" style="height:10px"></div>
+      <div class="s-bar" style="height:14px"></div>
+      <div class="s-bar" style="height:10px"></div>
+      <div class="s-bar" style="height:8px"></div>
+      <div class="s-bar" style="height:6px"></div>
+    </div>
+  </div>
+
+  <!-- PTT -->
+  <div class="panel ptt-panel" style="grid-column:1/-1;">
+    <div class="panel-label" style="align-self:flex-start;">▸ Push to Talk</div>
+    <button id="ptt-btn" onmousedown="startListen()" onmouseup="stopListen()" ontouchstart="startListen()" ontouchend="stopListen()">PTT</button>
+    <div class="ptt-hint">HOLD BUTTON — OR HOLD SPACEBAR — TO TRANSMIT</div>
+    <div id="interim-text" style="font-size:0.75rem; color:var(--amber); min-height:20px; letter-spacing:1px;"></div>
+  </div>
+
+  <!-- Log -->
+  <div class="panel log-panel">
+    <div class="panel-label">▸ QSO Log</div>
+    <div id="log"></div>
+    <div class="log-controls">
+      <button class="btn btn-amber" onclick="clearLog()">CLEAR LOG</button>
+      <button class="btn btn-green" onclick="exportLog()">EXPORT</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <span>ARC-REACTOR HAM AI ASSISTANT</span>
+  <span>73 DE AI &nbsp;·&nbsp; ALWAYS MONITOR BEFORE TRANSMIT</span>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let apiKey = '';
+let recognition = null;
+let isListening = false;
+let conversationHistory = [];
+let audioContext = null;
+let analyser = null;
+let micStream = null;
+let animFrame = null;
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  populateVoices();
+  if (speechSynthesis.onvoiceschanged !== undefined) {
+    speechSynthesis.onvoiceschanged = populateVoices;
+  }
+  checkSpeechSupport();
+  setupKeyboard();
+});
+
+function checkSpeechSupport() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SpeechRecognition) {
+    setLed('led-speech', 'green');
+    logEntry('system', 'Web Speech API available');
+  } else {
+    setLed('led-speech', 'red');
+    logEntry('system', 'Web Speech API not supported — use Chrome or Edge');
+  }
+}
+
+function populateVoices() {
+  const voices = speechSynthesis.getVoices();
+  const sel = document.getElementById('voice-select');
+  sel.innerHTML = '';
+  voices.forEach((v, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = `${v.name} (${v.lang})`;
+    sel.appendChild(opt);
+  });
+}
+
+// ── API Key ───────────────────────────────────────────────────────────────────
+function saveKey() {
+  apiKey = document.getElementById('api-key').value.trim();
+  if (apiKey.startsWith('sk-ant')) {
+    setLed('led-api', 'green');
+    logEntry('system', 'API key accepted — ready to operate');
+  } else {
+    setLed('led-api', 'red');
+    logEntry('system', 'Invalid API key format');
+  }
+}
+
+// ── PTT / Speech Recognition ──────────────────────────────────────────────────
+function startListen() {
+  if (isListening) return;
+  if (!apiKey) { logEntry('system', 'Enter API key first'); return; }
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return;
+
+  isListening = true;
+  document.getElementById('ptt-btn').className = 'listening';
+  document.getElementById('ptt-btn').textContent = 'RX...';
+  setLed('led-mic', 'red');
+
+  recognition = new SpeechRecognition();
+  recognition.lang = document.getElementById('lang-select').value;
+  recognition.interimResults = true;
+  recognition.continuous = false;
+
+  recognition.onresult = (e) => {
+    let interim = '', final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) final += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    document.getElementById('interim-text').textContent = interim || final;
+    if (final) sendToAI(final.trim());
+  };
+
+  recognition.onerror = (e) => {
+    logEntry('system', `STT error: ${e.error}`);
+    resetPTT();
+  };
+
+  recognition.onend = () => {
+    if (isListening) resetPTT();
+  };
+
+  recognition.start();
+  startAudioViz();
+}
+
+function stopListen() {
+  if (!isListening) return;
+  isListening = false;
+  if (recognition) recognition.stop();
+  stopAudioViz();
+  document.getElementById('ptt-btn').className = 'processing';
+  document.getElementById('ptt-btn').textContent = 'PROC';
+  setLed('led-mic', 'amber');
+}
+
+function resetPTT() {
+  isListening = false;
+  document.getElementById('ptt-btn').className = '';
+  document.getElementById('ptt-btn').textContent = 'PTT';
+  document.getElementById('interim-text').textContent = '';
+  setLed('led-mic', 'off');
+  stopAudioViz();
+}
+
+// ── Claude API ────────────────────────────────────────────────────────────────
+async function sendToAI(text) {
+  if (!text) { resetPTT(); return; }
+  logEntry('user', text);
+  conversationHistory.push({ role: 'user', content: text });
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 512,
+        system: document.getElementById('sys-prompt').value,
+        messages: conversationHistory
+      })
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
+
+    const reply = data.content[0].text;
+    conversationHistory.push({ role: 'assistant', content: reply });
+    logEntry('ai', reply);
+    if (document.getElementById('tts-enabled').checked) speak(reply);
+  } catch (err) {
+    logEntry('system', `API error: ${err.message}`);
+  }
+  resetPTT();
+}
+
+// ── Text-to-Speech ────────────────────────────────────────────────────────────
+function speak(text) {
+  speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  const voices = speechSynthesis.getVoices();
+  const idx = parseInt(document.getElementById('voice-select').value);
+  if (voices[idx]) utt.voice = voices[idx];
+  utt.rate = 0.95;
+  speechSynthesis.speak(utt);
+}
+
+// ── Audio Visualizer ──────────────────────────────────────────────────────────
+async function startAudioViz() {
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioContext = new AudioContext();
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 256;
+    const source = audioContext.createMediaStreamSource(micStream);
+    source.connect(analyser);
+    drawWaveform();
+  } catch (e) { /* no mic access */ }
+}
+
+function stopAudioViz() {
+  if (animFrame) cancelAnimationFrame(animFrame);
+  if (micStream) micStream.getTracks().forEach(t => t.stop());
+  if (audioContext) audioContext.close();
+  const canvas = document.getElementById('waveform');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function drawWaveform() {
+  const canvas = document.getElementById('waveform');
+  const ctx = canvas.getContext('2d');
+  const buf = new Uint8Array(analyser.frequencyBinCount);
+
+  function draw() {
+    animFrame = requestAnimationFrame(draw);
+    analyser.getByteTimeDomainData(buf);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#00ff88';
+    ctx.lineWidth = 1.5;
+    ctx.shadowBlur = 6;
+    ctx.shadowColor = '#00ff88';
+    ctx.beginPath();
+    const sl = canvas.width / buf.length;
+    let x = 0;
+    for (let i = 0; i < buf.length; i++) {
+      const y = (buf[i] / 128) * (canvas.height / 2);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+      x += sl;
+    }
+    ctx.stroke();
+
+    // S-meter bars
+    analyser.getByteFrequencyData(buf);
+    const bars = document.querySelectorAll('.s-bar');
+    const step = Math.floor(buf.length / bars.length);
+    bars.forEach((bar, i) => {
+      const val = buf[i * step] / 255;
+      const h = Math.max(4, val * 28);
+      bar.style.height = h + 'px';
+      bar.style.background = val > 0.7 ? 'var(--red)' : val > 0.4 ? 'var(--amber)' : 'var(--green)';
+    });
+  }
+  draw();
+}
+
+// ── Log Utilities ─────────────────────────────────────────────────────────────
+function logEntry(type, text) {
+  const log = document.getElementById('log');
+  const div = document.createElement('div');
+  div.className = `log-entry ${type}`;
+  const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
+  div.innerHTML = `<span class="timestamp">[${ts}]</span>${escHtml(text)}`;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function escHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function clearLog() {
+  document.getElementById('log').innerHTML = '';
+  conversationHistory = [];
+  logEntry('system', 'Log cleared — new QSO session started');
+}
+
+function exportLog() {
+  const entries = document.querySelectorAll('.log-entry');
+  let text = `ARC-REACTOR HAM AI ASSISTANT — QSO LOG\n`;
+  text += `Exported: ${new Date().toISOString()}\n`;
+  text += '='.repeat(60) + '\n\n';
+  entries.forEach(e => { text += e.textContent + '\n'; });
+  const blob = new Blob([text], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `qso_log_${Date.now()}.txt`;
+  a.click();
+}
+
+// ── Keyboard Shortcut (Spacebar = PTT) ───────────────────────────────────────
+function setupKeyboard() {
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+      e.preventDefault();
+      startListen();
+    }
+  });
+  document.addEventListener('keyup', (e) => {
+    if (e.code === 'Space') stopListen();
+  });
+}
+
+// ── LED helpers ───────────────────────────────────────────────────────────────
+function setLed(id, state) {
+  const el = document.getElementById(id);
+  el.className = 'led';
+  if (state === 'green') el.classList.add('on-green');
+  if (state === 'amber') el.classList.add('on-amber');
+  if (state === 'red') el.classList.add('on-red');
+}
+</script>
+</body>
+</html>
