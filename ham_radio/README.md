@@ -1,41 +1,44 @@
-# ARC-Reactor Ham Radio AI Tools
+# Ham Radio AI Tools
 
-Two tools for integrating AI assistance into your ham radio shack.
+Two tools for integrating Claude AI into your ham radio shack.
+
+| Tool | Interface | Best for |
+|---|---|---|
+| [`ham_radio_assistant.html`](ham_radio_assistant.html) | Browser | Quick voice Q&A, no installation |
+| [`ham_radio_pipeline.py`](ham_radio_pipeline.py) | Python CLI | Tapping radio audio, QSO transcription, digital mode feeds |
 
 ---
 
-## 1. `ham_radio_assistant.html` — Browser Voice Assistant
+## `ham_radio_assistant.html` — Browser Voice Assistant
 
-A self-contained web app. Open in Chrome or Edge, enter your Anthropic API key, and talk hands-free.
+A self-contained web app. Open in Chrome or Edge, enter your Anthropic API key, and talk hands-free. No server or installation required.
 
 **Features:**
-- Push-to-talk button (or hold **Spacebar**) triggers Web Speech API
-- Transcribed speech sent to Claude (`claude-sonnet-4-20250514`)
-- Responses read back via browser TTS
-- Real-time waveform + S-meter visualization
-- Configurable system prompt (station context, operator callsign, etc.)
-- QSO log with timestamp export
+- Push-to-talk button or hold **Spacebar** to transmit
+- Web Speech API transcription → Claude (`claude-sonnet-4-6`) → browser TTS readback
+- Real-time waveform and S-meter visualization
+- Configurable system prompt (station context, operator callsign, band plan, etc.)
+- QSO log with timestamped export
 
 **Usage:**
 1. Open `ham_radio_assistant.html` in Chrome or Edge
 2. Enter your Anthropic API key and click **CONNECT**
-3. Hold the PTT button (or Spacebar) and speak
-4. Claude responds in text and audio
+3. Hold the PTT button (or Spacebar) and speak — Claude responds in text and audio
 
-> No server required. API key is held in memory only and sent directly to `api.anthropic.com`.
+> API key is held in memory only and sent directly to `api.anthropic.com`. Nothing is stored locally.
 
 ---
 
-## 2. `ham_radio_pipeline.py` — Python Audio Pipeline
+## `ham_radio_pipeline.py` — Python Audio Pipeline
 
-Taps your radio's audio output for full Whisper-based transcription and Claude analysis.
+Taps your radio's audio output for full local Whisper transcription and Claude analysis. Runs on Linux, macOS, or Windows (including Raspberry Pi).
 
 ### Installation
 
 ```bash
-pip install anthropic openai-whisper sounddevice pyttsx3 numpy
-# For GPU acceleration:
-pip install torch  # CUDA build for your GPU
+pip install -r requirements.txt
+# Optional: GPU-accelerated Whisper (faster on noisy radio audio)
+pip install torch  # use your CUDA build URL
 ```
 
 ### Environment
@@ -52,23 +55,23 @@ export ANTHROPIC_API_KEY=sk-ant-...
 | Transcribe | `python ham_radio_pipeline.py --mode transcribe` | Log all QSO audio |
 | Pipe | `python ham_radio_pipeline.py --mode pipe` | fldigi / WSJT-X digital decode feed |
 
-### Common Options
+### Common options
 
 ```bash
-# List audio devices (find your radio's USB audio interface)
+# List audio input devices — find your rig's USB audio interface
 python ham_radio_pipeline.py --list-devices
 
-# Use a specific device (e.g. your rig's USB audio out)
+# Use a specific audio device (replace 3 with your device index)
 python ham_radio_pipeline.py --device 3
 
-# VOX mode (auto-starts on audio level, no PTT needed)
+# VOX mode: starts recording automatically on audio level
 python ham_radio_pipeline.py --vox
 
-# Larger Whisper model for better accuracy on noisy radio audio
+# Larger Whisper model for better accuracy on noisy / weak signals
 python ham_radio_pipeline.py --whisper-model small
 
-# Pipe fldigi decoded text to Claude
-fldigi-output | python ham_radio_pipeline.py --mode pipe
+# Disable TTS readback
+python ham_radio_pipeline.py --no-tts
 ```
 
 ### Piping from fldigi

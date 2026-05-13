@@ -39,7 +39,7 @@ void setupDisplay() {
   display.display();
 }
 
-void updateDisplay(String lastMsg, int rssi) {
+void updateDisplay(const String& lastMsg, int rssi) {
   display.clear();
   display.drawString(0, 0,  "Gateway [RX: " + String(packetCount) + "]");
   display.drawString(0, 14, "RSSI: " + String(rssi) + " dBm");

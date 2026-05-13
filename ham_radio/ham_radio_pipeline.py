@@ -33,8 +33,6 @@ import queue
 import signal
 import logging
 import argparse
-import threading
-import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -81,7 +79,7 @@ log = logging.getLogger('ham-ai')
 # ── Config ────────────────────────────────────────────────────────────────────
 DEFAULT_CONFIG = {
     "api_key": "",                  # Set ANTHROPIC_API_KEY env var or paste here
-    "model": "claude-sonnet-4-20250514",
+    "model": "claude-sonnet-4-6",
     "system_prompt": (
         "You are an AI assistant for a ham radio operator. "
         "Keep responses concise and radio-friendly. "
@@ -136,11 +134,11 @@ class QSOLogger:
 
 # ── TTS Engine ────────────────────────────────────────────────────────────────
 class TTSEngine:
-    def __init__(self, rate: int = 175, voice_index: int = 0):
+    def __init__(self, rate: int = 175, voice_index: int = 0, enabled: bool = True):
         self._engine = None
         self.rate = rate
         self.voice_index = voice_index
-        if HAS_TTS:
+        if HAS_TTS and enabled:
             self._init()
 
     def _init(self):
@@ -216,41 +214,28 @@ class AudioRecorder:
             log.error("sounddevice not available")
             return None
 
-        print("\n  >>> HOLD ENTER to transmit, release to stop <<<\n")
-        import msvcrt  # Windows
-        try:
-            use_msvcrt = True
-            msvcrt.getch  # test
-        except AttributeError:
-            use_msvcrt = False
-
         buf: list[np.ndarray] = []
-        stop_event = threading.Event()
 
         def callback(indata, frames, time_info, status):
             buf.append(indata.copy().flatten())
 
-        stream = sd.InputStream(
+        print("\n  >>> PRESS ENTER to start, ENTER again to stop <<<\n")
+        with sd.InputStream(
             samplerate=self.sample_rate,
             channels=self.channels,
             dtype='float32',
             device=self.device,
             blocksize=self.chunk,
             callback=callback
-        )
-
-        with stream:
-            # Wait for Enter press
+        ):
             input()
-            stream.start() if not stream.active else None
             start = time.time()
             log.info("● Recording...")
             try:
-                input()  # Wait for Enter release (second press)
+                input()
             except (KeyboardInterrupt, EOFError):
                 pass
-            elapsed = time.time() - start
-            log.info(f"■ Stopped ({elapsed:.1f}s)")
+            log.info(f"■ Stopped ({time.time() - start:.1f}s)")
 
         return np.concatenate(buf) if buf else None
 
@@ -339,7 +324,7 @@ def mode_interactive(config: dict):
 
     whisper_tx = WhisperTranscriber(config["whisper_model"]) if HAS_WHISPER else None
     claude = ClaudeClient(api_key, config["model"], config["system_prompt"])
-    tts = TTSEngine(config["tts_rate"], config["tts_voice_index"])
+    tts = TTSEngine(config["tts_rate"], config["tts_voice_index"], config.get("tts_enabled", True))
     recorder = AudioRecorder(config)
     qso_log = QSOLogger(config["log_file"])
 
@@ -456,7 +441,7 @@ def mode_pipe(config: dict):
         "summarize exchanges, flag anything interesting (DX, rare grids, emergencies)."
     )
     claude = ClaudeClient(api_key, config["model"], system)
-    tts = TTSEngine(config["tts_rate"])
+    tts = TTSEngine(config["tts_rate"], enabled=config.get("tts_enabled", True))
     qso_log = QSOLogger(config["log_file"])
 
     print("Piped digital mode input — reading from stdin...")
@@ -545,8 +530,7 @@ def main():
     config["whisper_model"] = args.whisper_model
     config["vox_mode"] = args.vox
     config["log_file"] = args.log
-    if args.no_tts:
-        globals()['HAS_TTS'] = False
+    config["tts_enabled"] = not args.no_tts
 
     signal.signal(signal.SIGINT, lambda *_: sys.exit(0))
 

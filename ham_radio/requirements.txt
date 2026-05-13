@@ -1,0 +1,9 @@
+anthropic>=0.50.0
+openai-whisper
+sounddevice
+numpy
+pyttsx3
+# Optional: install torch with CUDA support for GPU-accelerated Whisper
+# pip install torch --index-url https://download.pytorch.org/whl/cu118
+# Optional: required only if audio sample rate differs from 16 kHz
+# librosa

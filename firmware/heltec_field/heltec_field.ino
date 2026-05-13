@@ -45,7 +45,7 @@ void setupDisplay() {
   display.display();
 }
 
-void updateDisplay(String status) {
+void updateDisplay(const String& status) {
   display.clear();
   display.drawString(0, 0,  "Field node");
   display.drawString(0, 14, "TX: " + String(txCount) + "  RX: " + String(rxCount));
