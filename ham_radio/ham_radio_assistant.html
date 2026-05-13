@@ -349,6 +349,15 @@
     display: flex;
     justify-content: space-between;
   }
+
+  /* Settings panel internals */
+  .settings-body { display: flex; flex-direction: column; gap: 10px; }
+  .setting-group-label { font-size: 0.65rem; color: var(--dim); margin-bottom: 4px; letter-spacing: 1px; }
+  .setting-label { font-size: 0.72rem; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+
+  /* PTT sub-elements */
+  .ptt-panel .panel-label { align-self: flex-start; }
+  #interim-text { font-size: 0.75rem; color: var(--amber); min-height: 20px; letter-spacing: 1px; }
 </style>
 </head>
 <body>
@@ -386,9 +395,9 @@
   <!-- Settings -->
   <div class="panel">
     <div class="panel-label">▸ Settings</div>
-    <div style="display:flex; flex-direction:column; gap:10px;">
+    <div class="settings-body">
       <div>
-        <div style="font-size:0.65rem; color:var(--dim); margin-bottom:4px; letter-spacing:1px;">SPEECH LANGUAGE</div>
+        <div class="setting-group-label">SPEECH LANGUAGE</div>
         <select id="lang-select">
           <option value="en-US">English (US)</option>
           <option value="en-GB">English (GB)</option>
@@ -399,10 +408,10 @@
         </select>
       </div>
       <div>
-        <div style="font-size:0.65rem; color:var(--dim); margin-bottom:4px; letter-spacing:1px;">TTS VOICE</div>
+        <div class="setting-group-label">TTS VOICE</div>
         <select id="voice-select"><option>Loading voices...</option></select>
       </div>
-      <label style="font-size:0.72rem; display:flex; align-items:center; gap:8px; cursor:pointer;">
+      <label class="setting-label">
         <input type="checkbox" id="tts-enabled" checked style="accent-color:var(--green);"> Enable text-to-speech readback
       </label>
     </div>
@@ -427,11 +436,11 @@
   </div>
 
   <!-- PTT -->
-  <div class="panel ptt-panel" style="grid-column:1/-1;">
-    <div class="panel-label" style="align-self:flex-start;">▸ Push to Talk</div>
+  <div class="panel ptt-panel">
+    <div class="panel-label">▸ Push to Talk</div>
     <button id="ptt-btn" onmousedown="startListen()" onmouseup="stopListen()" ontouchstart="startListen()" ontouchend="stopListen()">PTT</button>
     <div class="ptt-hint">HOLD BUTTON — OR HOLD SPACEBAR — TO TRANSMIT</div>
-    <div id="interim-text" style="font-size:0.75rem; color:var(--amber); min-height:20px; letter-spacing:1px;"></div>
+    <div id="interim-text"></div>
   </div>
 
   <!-- Log -->
@@ -583,7 +592,7 @@ async function sendToAI(text) {
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 512,
         system: document.getElementById('sys-prompt').value,
         messages: conversationHistory
@@ -628,9 +637,10 @@ async function startAudioViz() {
 }
 
 function stopAudioViz() {
-  if (animFrame) cancelAnimationFrame(animFrame);
-  if (micStream) micStream.getTracks().forEach(t => t.stop());
-  if (audioContext) audioContext.close();
+  if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  if (audioContext) { audioContext.close(); audioContext = null; }
+  analyser = null;
   const canvas = document.getElementById('waveform');
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -642,6 +652,7 @@ function drawWaveform() {
   const buf = new Uint8Array(analyser.frequencyBinCount);
 
   function draw() {
+    if (!analyser) return;
     animFrame = requestAnimationFrame(draw);
     analyser.getByteTimeDomainData(buf);
     ctx.clearRect(0, 0, canvas.width, canvas.height);

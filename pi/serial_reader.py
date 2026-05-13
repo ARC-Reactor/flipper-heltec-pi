@@ -22,15 +22,15 @@ def parse_args():
     return parser.parse_args()
 
 
+def timestamp():
+    return datetime.now().strftime("%H:%M:%S")
+
+
 def send_command(ser, command: str):
     """Send a command to the gateway to broadcast over LoRa."""
     line = command.strip() + "\n"
     ser.write(line.encode("utf-8"))
     print(f"[{timestamp()}] SENT: {command}")
-
-
-def timestamp():
-    return datetime.now().strftime("%H:%M:%S")
 
 
 def main():

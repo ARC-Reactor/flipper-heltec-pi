@@ -19,7 +19,6 @@ import serial
 import json
 import argparse
 import time
-import threading
 from datetime import datetime
 import paho.mqtt.client as mqtt
 
